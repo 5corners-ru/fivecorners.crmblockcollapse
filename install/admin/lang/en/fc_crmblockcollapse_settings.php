@@ -1,0 +1,23 @@
+<?php
+$MESS["FCO_CBC_SET_PAGE_TITLE"]        = "CRM Block Collapse — Settings";
+$MESS["FCO_CBC_SET_SECTION_ENTITIES"]  = "Entity Types";
+$MESS["FCO_CBC_SET_ENTITY_DEAL"]       = "Deals";
+$MESS["FCO_CBC_SET_ENTITY_LEAD"]       = "Leads";
+$MESS["FCO_CBC_SET_ENTITY_CONTACT"]    = "Contacts";
+$MESS["FCO_CBC_SET_ENTITY_COMPANY"]    = "Companies";
+$MESS["FCO_CBC_SET_ENTITY_SMART"]      = "Smart Processes";
+$MESS["FCO_CBC_SET_SECTION_SMART"]     = "Smart Process Configuration";
+$MESS["FCO_CBC_SET_SMART_ALL"]         = "All smart processes";
+$MESS["FCO_CBC_SET_SMART_SELECT"]      = "Selected:";
+$MESS["FCO_CBC_SET_SMART_NONE"]        = "No smart processes found or CRM module is not installed.";
+$MESS["FCO_CBC_SET_SAVE"]              = "Save";
+$MESS["FCO_CBC_SET_SAVED"]             = "Settings saved.";
+$MESS["FCO_CBC_SET_HOW_TITLE"]         = "How the module works";
+$MESS["FCO_CBC_SET_HOW_TEXT"]          = "After installation, collapse/expand buttons appear next to each field group header in the selected CRM entity cards. Each block's state is saved in the database per user and synchronized across devices.";
+$MESS["FCO_CBC_SET_STAGE_RULES_TITLE"] = "Stage Rules";
+$MESS["FCO_CBC_SET_STAGE_RULES_HINT1"] = "For selected stages, specify blocks that should be forcibly expanded.";
+$MESS["FCO_CBC_SET_STAGE_RULES_HINT2"] = "Stage settings take priority over the user's personal state.";
+$MESS["FCO_CBC_SET_STAGE_RULES_HINT3"] = "Block names — as shown in the card, one per line (case-insensitive).";
+$MESS["FCO_CBC_SET_STAGE_NONE"]        = "No stages found. Make sure the CRM module is installed and active.";
+$MESS["FCO_CBC_VERSION_LABEL"]         = "version";
+$MESS["FCO_CBC_SET_STAGE_PLACEHOLDER"] = "Block name…";
