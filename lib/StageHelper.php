@@ -86,11 +86,11 @@ class StageHelper
 
         try {
             $typeList = \Bitrix\Crm\Model\Dynamic\TypeTable::getList([
-                'select' => ['ID', 'TITLE'],
+                'select' => ['ID', 'ENTITY_TYPE_ID', 'TITLE'],
                 'order'  => ['TITLE' => 'ASC'],
             ]);
             while ($typeRow = $typeList->fetch()) {
-                $typeId    = (int)$typeRow['ID'];
+                $typeId    = (int)$typeRow['ENTITY_TYPE_ID'];
                 $typeTitle = (string)$typeRow['TITLE'];
                 try {
                     $factory = \Bitrix\Crm\Service\Container::getInstance()->getFactory($typeId);

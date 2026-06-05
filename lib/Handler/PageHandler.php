@@ -38,6 +38,35 @@ class PageHandler
             return;
         }
 
+        // Migrate legacy settings that stored TypeTable.ID instead of ENTITY_TYPE_ID.
+        // After the fix the admin page saves ENTITY_TYPE_ID, but existing portals may
+        // still have old TypeTable.IDs.  We resolve them here transparently so the user
+        // does not have to re-save settings manually.
+        if (!empty($enabledSmTypes) && Loader::includeModule('crm')) {
+            try {
+                $res = \Bitrix\Crm\Model\Dynamic\TypeTable::getList(array(
+                    'select' => array('ID', 'ENTITY_TYPE_ID'),
+                ));
+                $tableIdToEntityTypeId = array();
+                $knownEntityTypeIds    = array();
+                while ($row = $res->fetch()) {
+                    $tableIdToEntityTypeId[(int)$row['ID']] = (int)$row['ENTITY_TYPE_ID'];
+                    $knownEntityTypeIds[]                   = (int)$row['ENTITY_TYPE_ID'];
+                }
+                $resolved = array();
+                foreach ($enabledSmTypes as $storedId) {
+                    if (isset($tableIdToEntityTypeId[$storedId])) {
+                        $resolved[] = $tableIdToEntityTypeId[$storedId]; // old TypeTable.ID → ENTITY_TYPE_ID
+                    } elseif (in_array($storedId, $knownEntityTypeIds, true)) {
+                        $resolved[] = $storedId; // already ENTITY_TYPE_ID
+                    }
+                }
+                $enabledSmTypes = $resolved;
+            } catch (\Throwable $e) {
+                $enabledSmTypes = array(); // fallback: enable all
+            }
+        }
+
         $config = array(
             'enabledTypes'   => $enabledTypes,
             'enabledSmTypes' => array_map('strval', $enabledSmTypes),
@@ -76,7 +105,7 @@ class PageHandler
 .fc-cbc-toggle-btn svg { width: 10px; height: 10px; fill: currentColor; }
 .fc-cbc-section--collapsed .fc-cbc-toggle-btn { transform: rotate(-90deg); }
 .ui-entity-editor-section-header { cursor: pointer; user-select: none; }
-.fc-cbc-body-wrap { overflow: hidden; transition: max-height 0.28s ease-out; }
+.fc-cbc-section--collapsed .fc-cbc-body-wrap { max-height: 0 !important; overflow: hidden !important; }
 ';
     }
 }

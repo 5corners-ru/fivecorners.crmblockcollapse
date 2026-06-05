@@ -43,7 +43,7 @@
             return { type: 'CONTACT', id: +m[1] };
         if ((m = path.match(/\/crm\/company\/(?:details|edit)\/(\d+)/)))
             return { type: 'COMPANY', id: +m[1] };
-        if ((m = path.match(/\/crm\/type\/(\d+)\/(?:details|edit)\/(\d+)/)))
+        if ((m = path.match(/\/type\/(\d+)\/(?:details|edit)\/(\d+)/)))
             return { type: 'SMART_PROCESS', typeId: +m[1], id: +m[2] };
         return null;
     }
@@ -110,32 +110,50 @@
     }
 
     // ── Collapse / expand ─────────────────────────────────────────────────────
-    // Animates `wrap` (our own div) — not `body` — to avoid conflicts with
-    // Bitrix's min-height rules on .ui-entity-editor-section-content-wrapper.
+    // CSS class fc-cbc-section--collapsed on the section is the authoritative collapsed
+    // state — it drives the CSS rule that sets max-height:0 on the wrap.
+    // Inline styles are only used during the JS animation and cleared afterwards,
+    // so Bitrix re-renders inside a slider cannot accidentally undo the collapsed state.
     function applyState(section, body, wrap, collapsed, animate) {
         if (collapsed) {
-            section.classList.add('fc-cbc-section--collapsed');
-            wrap.style.overflow = 'hidden';
             if (animate) {
-                wrap.style.maxHeight = wrap.scrollHeight + 'px';
+                // Animate first, add class when transition ends (class would override inline)
+                wrap.style.overflow   = 'hidden';
+                wrap.style.maxHeight  = wrap.scrollHeight + 'px';
                 void wrap.offsetHeight;
                 wrap.style.transition = 'max-height 0.28s ease-out';
                 wrap.style.maxHeight  = '0';
+                var onEnd = function () {
+                    wrap.removeEventListener('transitionend', onEnd);
+                    wrap.style.maxHeight  = '';
+                    wrap.style.overflow   = '';
+                    wrap.style.transition = '';
+                    section.classList.add('fc-cbc-section--collapsed');
+                };
+                wrap.addEventListener('transitionend', onEnd);
             } else {
-                wrap.style.transition = '';
-                wrap.style.maxHeight  = '0';
+                section.classList.add('fc-cbc-section--collapsed');
             }
         } else {
-            section.classList.remove('fc-cbc-section--collapsed');
-            wrap.style.transition = 'max-height 0.28s ease-in';
-            wrap.style.maxHeight  = wrap.scrollHeight + 'px';
-            var onEnd = function () {
-                wrap.removeEventListener('transitionend', onEnd);
-                wrap.style.maxHeight  = '';
-                wrap.style.overflow   = '';
-                wrap.style.transition = '';
-            };
-            wrap.addEventListener('transitionend', onEnd);
+            if (animate) {
+                // Lock inline to 0 before removing class so content doesn't flash open
+                wrap.style.overflow  = 'hidden';
+                wrap.style.maxHeight = '0';
+                void wrap.offsetHeight;
+                section.classList.remove('fc-cbc-section--collapsed');
+                void wrap.offsetHeight;
+                wrap.style.transition = 'max-height 0.28s ease-in';
+                wrap.style.maxHeight  = wrap.scrollHeight + 'px';
+                var onEnd2 = function () {
+                    wrap.removeEventListener('transitionend', onEnd2);
+                    wrap.style.maxHeight  = '';
+                    wrap.style.overflow   = '';
+                    wrap.style.transition = '';
+                };
+                wrap.addEventListener('transitionend', onEnd2);
+            } else {
+                section.classList.remove('fc-cbc-section--collapsed');
+            }
         }
     }
 
@@ -393,15 +411,17 @@
     // ── Bootstrap ─────────────────────────────────────────────────────────────
     function init() {
         entityInfo = parseEntityInfo();
-        if (!entityInfo || !isEntityEnabled(entityInfo)) return;
+        if (entityInfo && isEntityEnabled(entityInfo)) {
+            loadState(entityInfo, function (state, ebs) {
+                blockState      = state;
+                expandedByStage = ebs;
+                stateLoaded     = true;
+                processSections();
+            });
+        }
 
-        loadState(entityInfo, function (state, ebs) {
-            blockState      = state;
-            expandedByStage = ebs;
-            stateLoaded     = true;
-            processSections();
-        });
-
+        // Always start observer and register SPA listeners — the initial page may be
+        // a list/kanban, and the user will navigate into a CRM entity via a slider.
         startObserver();
         startStageWatcher();
 

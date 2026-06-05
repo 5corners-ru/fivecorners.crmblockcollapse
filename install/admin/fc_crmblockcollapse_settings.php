@@ -41,9 +41,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && check_bitrix_sessid()) {
 
     $smartIds = array();
     if (in_array('SMART_PROCESS', $enabledTypes, true)) {
-        $rawIds = $_POST['smart_type_ids'] ?? array();
-        if (is_array($rawIds)) {
-            $smartIds = array_filter(array_map('intval', $rawIds));
+        if (!empty($_POST['smart_all'])) {
+            // "All smart processes" selected — store empty array (= all enabled)
+            $smartIds = array();
+        } else {
+            $rawIds = $_POST['smart_type_ids'] ?? array();
+            if (is_array($rawIds)) {
+                $smartIds = array_filter(array_map('intval', $rawIds));
+            }
         }
     }
     Settings::setEnabledSmartProcessTypeIds(array_values($smartIds));
@@ -79,11 +84,15 @@ $allStages      = array('DEAL' => array(), 'LEAD' => array(), 'SMART_PROCESS' =>
 if (Loader::includeModule('crm')) {
     try {
         $result = \Bitrix\Crm\Model\Dynamic\TypeTable::getList(array(
-            'select' => array('ID', 'TITLE'),
+            'select' => array('ID', 'ENTITY_TYPE_ID', 'TITLE'),
             'order'  => array('TITLE' => 'ASC'),
         ));
         while ($row = $result->fetch()) {
-            $smartProcesses[] = array('ID' => (int)$row['ID'], 'TITLE' => (string)$row['TITLE']);
+            $smartProcesses[] = array(
+                'ID'             => (int)$row['ID'],
+                'ENTITY_TYPE_ID' => (int)$row['ENTITY_TYPE_ID'],
+                'TITLE'          => (string)$row['TITLE'],
+            );
         }
     } catch (\Throwable $e) {
         // CRM module available but smart processes API unavailable (older version)
@@ -186,6 +195,8 @@ PageHeader::renderOpen($moduleVersion, 'fivecorners.crmblockcollapse');
                             <td width="40%"><b><?= Loc::getMessage('FCO_CBC_SET_SMART_ALL') ?></b></td>
                             <td>
                                 <input type="checkbox" id="fc_cbc_smart_all"
+                                       name="smart_all"
+                                       value="Y"
                                        <?= empty($enabledSmartTypeIds) ? ' checked' : '' ?>
                                        onchange="document.getElementById('fc-cbc-smart-list').style.display=this.checked?'none':'';">
                             </td>
@@ -196,16 +207,16 @@ PageHeader::renderOpen($moduleVersion, 'fivecorners.crmblockcollapse');
                         <table class="edit-table" width="100%">
                             <?php foreach ($smartProcesses as $sp):
                                 $checked = empty($enabledSmartTypeIds)
-                                    || in_array($sp['ID'], $enabledSmartTypeIds, true)
+                                    || in_array($sp['ENTITY_TYPE_ID'], $enabledSmartTypeIds, true)
                                     ? ' checked' : '';
                             ?>
                             <tr>
-                                <td width="40%"><label for="fc_cbc_sp_<?= $sp['ID'] ?>"><?= htmlspecialcharsbx($sp['TITLE']) ?></label></td>
+                                <td width="40%"><label for="fc_cbc_sp_<?= $sp['ENTITY_TYPE_ID'] ?>"><?= htmlspecialcharsbx($sp['TITLE']) ?></label></td>
                                 <td>
                                     <input type="checkbox"
-                                           id="fc_cbc_sp_<?= $sp['ID'] ?>"
+                                           id="fc_cbc_sp_<?= $sp['ENTITY_TYPE_ID'] ?>"
                                            name="smart_type_ids[]"
-                                           value="<?= (int)$sp['ID'] ?>"
+                                           value="<?= (int)$sp['ENTITY_TYPE_ID'] ?>"
                                            <?= $checked ?>>
                                 </td>
                             </tr>
