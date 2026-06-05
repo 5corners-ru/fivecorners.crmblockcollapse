@@ -1,65 +1,44 @@
-# fivecorners.crmblockcollapse — итоги сессии 2026-06-04
+# fivecorners.crmblockcollapse — итоги сессии 2026-06-05
 
 ## Статус
 Модуль работает на testportal.fivecorners.ru:
-- Админка открывается: `/local/admin/fc_crmblockcollapse_settings.php`
-- Кнопки сворачивания появляются в карточках CRM
+- Кнопки сворачивания работают в Сделках, Лидах, Контактах, Компаниях
+- Кнопки сворачивания работают в Смарт-процессах (открываются через слайдер)
 - Состояние сохраняется между сессиями и обновлением страницы
+- Правила по стадиям работают для Сделок, Лидов, Смарт-процессов
 
-## Что было исправлено
+## Что было исправлено 2026-06-05 (сессия 3)
 
-### Баг 1 — include.php: неправильный API (белый экран везде)
-**Файл:** `include.php`
-**Проблема:** На сервере был `\Bitrix\Main\Loader::getInstance()->registerNamespace(...)` — метод `getInstance()` не существует.
+### Баг A — TypeTable.ID vs ENTITY_TYPE_ID
+**Файлы:** `lib/Handler/PageHandler.php`, `lib/StageHelper.php`, `install/admin/fc_crmblockcollapse_settings.php`
+**Проблема:** Настройки сохраняли `TypeTable.ID` (1, 2, 3...) для смарт-процессов, а URL содержит `TypeTable.ENTITY_TYPE_ID` (1038...). `isEntityEnabled()` сравнивал несовместимые числа → `false` → нет кнопок.
 **Фикс:**
-```php
-Loader::registerAutoLoadClasses('fivecorners.crmblockcollapse', [
-    'FiveCorners\CrmBlockCollapse\AdminMenu'           => 'lib/AdminMenu.php',
-    'FiveCorners\CrmBlockCollapse\Settings'            => 'lib/Settings.php',
-    'FiveCorners\CrmBlockCollapse\Handler\PageHandler' => 'lib/Handler/PageHandler.php',
-]);
-```
+- `PageHandler.php` — прозрачная миграция на лету: TypeTable.ID → ENTITY_TYPE_ID (без пересохранения настроек)
+- `StageHelper.php` — `getAllStages()` выбирает `ENTITY_TYPE_ID` и передаёт в `getFactory()`
+- Admin settings — чекбоксы хранят `ENTITY_TYPE_ID`; добавлен `name="smart_all"` для корректного сабмита
 
-### Баг 2 — admin page: die() при веб-запросе (белый экран, HTTP 200)
-**Файл:** `install/admin/fc_crmblockcollapse_settings.php`
-**Проблема:** Строка `defined("B_PROLOG_INCLUDED") && B_PROLOG_INCLUDED === true || die()` в начале файла убивала страницу при прямом HTTP-запросе.
-**Фикс:** Канонический header (как в depfields):
-```php
-defined('B_PROLOG_INCLUDED') || define('B_PROLOG_INCLUDED', true);
-define('STOP_STATISTICS', true);
-define('NO_KEEP_STATISTIC', 'Y');
-define('NEED_AUTH', true);
-```
-
-### Баг 3 — JS не грузился на CRM-страницы
-**Файл:** `lib/Handler/PageHandler.php`
-**Проблема:** `OnProlog` инжектировал JS только если URL содержит `/crm/`. В Bitrix24 SPA пользователь заходит с дашборда — JS в layout не попадал никогда.
-**Фикс:** Убрана проверка URL. JS грузится на всех не-AJAX страницах портала. `collapse.js` определяет сущность сам на клиенте через `parseEntityInfo()`.
-
-### Баг 4 — блоки не сворачивались визуально (Bitrix min-height конфликт)
+### Баг B — URL-регекс не матчил путь слайдера
 **Файл:** `install/js/crmblockcollapse/collapse.js`
-**Проблема:** `applyState()` ставила `max-height: 0` на `.ui-entity-editor-section-content-wrapper`. Bitrix ставит `min-height` на этот элемент — `min-height` перебивает `max-height`.
-**Фикс:** Анимация перенесена на `wrap` (наш div):
-```javascript
-// было: applyState(section, body, collapsed, animate)
-// стало: applyState(section, body, wrap, collapsed, animate)
-// max-height/overflow теперь на wrap, не на body
-```
+**Проблема:** Смарт-процессы открываются по пути `/page/srm/test/type/1038/details/1/`. Регекс искал `/crm/type/` — не находил.
+**Фикс:** `/\/type\/(\d+)\/(?:details|edit)\/(\d+)/` — ищет `/type/` без привязки к `/crm/`
+
+### Баг C — init() не регистрировал навигацию на не-CRM страницах
+**Файл:** `install/js/crmblockcollapse/collapse.js`
+**Проблема:** Если начальная страница — канбан (не сущность), `init()` выходил до регистрации `SPA:pushState`. Слайдер открывался, `handleNavigation` никогда не вызывался.
+**Фикс:** `startObserver()` и все SPA-события регистрируются всегда, независимо от URL начальной страницы.
+
+### Баг D — applyState не держал секцию свёрнутой в слайдере
+**Файлы:** `install/js/crmblockcollapse/collapse.js`, `lib/Handler/PageHandler.php`
+**Проблема:** Bitrix сбрасывал инлайн-стиль `maxHeight: 0` при рендере в слайдере → блок разворачивался обратно. Пользователь видел эффект только после F5.
+**Фикс:**
+- CSS: `.fc-cbc-section--collapsed .fc-cbc-body-wrap { max-height: 0 !important; overflow: hidden !important; }`
+- `applyState`: инлайн-стили только для анимации; CSS-класс добавляется в `transitionend` и является авторитетным состоянием
 
 ## Что ещё нужно сделать
 
-- [ ] Иконка модуля `admin_icon.png` — скопировать из reference-модуля или нарисовать
-- [ ] Проверить Сделки после фикса баг #5 (SPA lazy-body)
-- [ ] Тестирование Контактов, Компаний
-- [ ] Тестирование Смарт-процессов
 - [ ] Проверить поведение при редактировании полей (edit-режим блока)
+- [ ] Тестирование Контактов, Компаний
 - [ ] Подготовка к Marketplace (описание, скриншоты, версия)
-
-## Что сделано 2026-06-04 (сессия 2)
-
-- Исправлен баг на Сделках: `fc-cbc-done='1'` ставился до null-check на body → секции без body помечались как готовые навсегда
-- MutationObserver дополнен триггером на появление body в незаконченной секции
-- Задеплоено через WinSCP. Admin page теперь из исходника (не in-place)
 
 ## Деплой
 
