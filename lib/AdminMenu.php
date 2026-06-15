@@ -41,6 +41,9 @@ class AdminMenu
             return;
         }
 
+        // Лейблы подпунктов — в общем admin-lang (FCO_CBC_NAV_*).
+        Loc::loadMessages(__DIR__ . '/../install/admin/fc_crmblockcollapse_common.php');
+
         // Создаём раздел «5 УГЛОВ», если другой модуль семьи ещё не создал.
         if (!isset($globalMenu[self::SECTION_ID])) {
             $globalMenu[self::SECTION_ID] = array(
@@ -64,7 +67,32 @@ class AdminMenu
             'icon'        => 'fco-cbc-menu-icon',
             'page_icon'   => 'fco-cbc-page-icon',
             'items_id'    => 'menu_fco_cbc',
-            'items'       => array(),
+            'items'       => array(
+                array(
+                    'parent_menu' => 'menu_fco_cbc',
+                    'sort'        => 100,
+                    'text'        => Loc::getMessage('FCO_CBC_NAV_SETTINGS'),
+                    'url'         => '/local/admin/fc_crmblockcollapse_settings.php',
+                    'items_id'    => 'menu_fco_cbc_settings',
+                    'items'       => array(),
+                ),
+                array(
+                    'parent_menu' => 'menu_fco_cbc',
+                    'sort'        => 110,
+                    'text'        => Loc::getMessage('FCO_CBC_NAV_RULES'),
+                    'url'         => '/local/admin/fc_crmblockcollapse_rules.php',
+                    'items_id'    => 'menu_fco_cbc_rules',
+                    'items'       => array(),
+                ),
+                array(
+                    'parent_menu' => 'menu_fco_cbc',
+                    'sort'        => 120,
+                    'text'        => Loc::getMessage('FCO_CBC_NAV_HELP'),
+                    'url'         => '/local/admin/fc_crmblockcollapse_help.php',
+                    'items_id'    => 'menu_fco_cbc_help',
+                    'items'       => array(),
+                ),
+            ),
         );
     }
 

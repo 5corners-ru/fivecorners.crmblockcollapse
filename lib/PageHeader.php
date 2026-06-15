@@ -7,6 +7,13 @@ Loc::loadMessages(__FILE__);
 
 class PageHeader
 {
+    // Навигация по admin-страницам модуля — рендерится в шапке (канон-нав).
+    private const NAV_PAGES = array(
+        'settings' => array('url' => '/local/admin/fc_crmblockcollapse_settings.php', 'key' => 'FCO_CBC_NAV_SETTINGS'),
+        'rules'    => array('url' => '/local/admin/fc_crmblockcollapse_rules.php',    'key' => 'FCO_CBC_NAV_RULES'),
+        'help'     => array('url' => '/local/admin/fc_crmblockcollapse_help.php',     'key' => 'FCO_CBC_NAV_HELP'),
+    );
+
     public static function addStyles(\CMain $application): void
     {
         $application->AddHeadString('<link rel="preconnect" href="https://fonts.googleapis.com">');
@@ -91,6 +98,8 @@ class PageHeader
   white-space: nowrap;
 }
 .fco-custom-header__link:hover { color: #1058d0; }
+.fco-custom-header__link--active { color: #1058d0; font-weight: 700; }
+.fco-custom-header__link--active::after { content:""; position:absolute; left:0; right:0; bottom:-2px; height:2px; background:#1058d0; border-radius:2px; }
 .fco-custom-header__link span { display: block; }
 .fco-custom-header__item--divider {
   width: 1px;
@@ -150,8 +159,10 @@ class PageHeader
 STYLE);
     }
 
-    public static function renderOpen(string $moduleVersion, string $moduleId): void
+    public static function renderOpen(string $moduleVersion, string $moduleId, string $activeKey = ''): void
     {
+        // nav-лейблы — в общем admin-lang (путь как «сосед» рядом с lang/, см. канон §3.4).
+        Loc::loadMessages(__DIR__ . '/../install/admin/fc_crmblockcollapse_common.php');
         $safeVersion  = htmlspecialchars($moduleVersion, ENT_QUOTES, 'UTF-8');
         $brandUrl     = 'https://www.5corners.ru/?utm_source=self&utm_medium=modules&utm_campaign=on-premis&utm_term=' . rawurlencode($moduleId);
         $brandUrlSafe = htmlspecialchars($brandUrl, ENT_QUOTES, 'UTF-8');
@@ -162,7 +173,19 @@ STYLE);
         <section class="fco-custom-header">
             <div class="fco-custom-header__wrapper">
 
-                <!-- Правая утилитарная панель (весь контент справа) -->
+                <!-- Навигация по страницам модуля -->
+                <ul class="fco-custom-header__list">
+                    <?php foreach (self::NAV_PAGES as $navKey => $navPage): ?>
+                    <li class="fco-custom-header__item">
+                        <a href="<?= htmlspecialchars($navPage['url'], ENT_QUOTES, 'UTF-8') ?>"
+                           class="fco-custom-header__link<?= $navKey === $activeKey ? ' fco-custom-header__link--active' : '' ?>">
+                            <span><?= htmlspecialchars(Loc::getMessage($navPage['key']) ?: $navKey, ENT_QUOTES, 'UTF-8') ?></span>
+                        </a>
+                    </li>
+                    <?php endforeach; ?>
+                </ul>
+
+                <!-- Правая утилитарная панель (версия, поддержка, бренд) -->
                 <ul class="fco-custom-header__list fco-custom-header__list--user" style="margin-left:auto;border-left:none;">
 
                     <li class="fco-custom-header__item fco-custom-header__item--version">

@@ -176,11 +176,20 @@ class fivecorners_crmblockcollapse extends CModule
     {
         $docRoot = \Bitrix\Main\Application::getDocumentRoot();
 
-        // Remove admin page and its lang files
+        // Remove admin pages and their lang files (settings / rules / help + common)
+        $adminPages = array(
+            'fc_crmblockcollapse_settings.php',
+            'fc_crmblockcollapse_rules.php',
+            'fc_crmblockcollapse_help.php',
+            'fc_crmblockcollapse_common.php', // lang-only (нет PHP-страницы-пары)
+        );
         @unlink($docRoot . "/local/admin/fc_crmblockcollapse_settings.php");
-        @unlink($docRoot . "/local/admin/lang/ru/fc_crmblockcollapse_settings.php");
-        @unlink($docRoot . "/local/admin/lang/en/fc_crmblockcollapse_settings.php");
+        @unlink($docRoot . "/local/admin/fc_crmblockcollapse_rules.php");
+        @unlink($docRoot . "/local/admin/fc_crmblockcollapse_help.php");
         foreach (array('ru', 'en') as $langCode) {
+            foreach ($adminPages as $page) {
+                @unlink($docRoot . "/local/admin/lang/" . $langCode . "/" . $page);
+            }
             $langDir = $docRoot . "/local/admin/lang/" . $langCode;
             if (is_dir($langDir) && $this->isDirEmpty($langDir)) {
                 @rmdir($langDir);
