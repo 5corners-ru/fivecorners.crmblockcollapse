@@ -68,9 +68,10 @@ class PageHandler
         }
 
         $config = array(
-            'enabledTypes'   => $enabledTypes,
-            'enabledSmTypes' => array_map('strval', $enabledSmTypes),
-            'ajaxUrl'        => '/local/ajax/fivecorners_crmblockcollapse.php',
+            'enabledTypes'          => $enabledTypes,
+            'enabledSmTypes'        => array_map('strval', $enabledSmTypes),
+            'ajaxUrl'               => '/local/ajax/fivecorners_crmblockcollapse.php',
+            'collapseAllFirstVisit' => Settings::isCollapseAllFirstVisit(),
         );
         // JSON_HEX_TAG/AMP/APOS/QUOT — экранируют < > & ' " как \uXXXX, чтобы значение
         // не могло выйти из inline <script> через </script>. JSON_UNESCAPED_SLASHES

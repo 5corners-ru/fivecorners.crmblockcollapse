@@ -69,6 +69,21 @@ class Settings
         return empty($enabledIds) || in_array($typeId, $enabledIds, true);
     }
 
+    /**
+     * Свернуть все разделы при самом первом открытии карточки пользователем
+     * (один раз на тип сущности, маркируется кукой на стороне клиента).
+     * По умолчанию включено.
+     */
+    public static function isCollapseAllFirstVisit(): bool
+    {
+        return Option::get(self::MODULE_ID, 'collapse_all_first_visit', 'Y') === 'Y';
+    }
+
+    public static function setCollapseAllFirstVisit(bool $enabled): void
+    {
+        Option::set(self::MODULE_ID, 'collapse_all_first_visit', $enabled ? 'Y' : 'N');
+    }
+
     public static function getStageRules(): array
     {
         $value = Option::get(self::MODULE_ID, 'stage_rules', '');
