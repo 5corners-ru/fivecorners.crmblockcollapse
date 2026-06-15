@@ -3,6 +3,14 @@
 Все заметные изменения модуля. Формат — [Keep a Changelog](https://keepachangelog.com/ru/1.0.0/),
 версионирование — [SemVer](https://semver.org/lang/ru/).
 
+## [1.0.2] - 2026-06-15
+
+### Changed
+- Отображаемое имя модуля «Сворачивание **блоков** в CRM» → «Сворачивание **разделов** в CRM»
+  (RU и EN — `Block Collapse` → `Section Collapse`): MODULE_NAME, пункт меню, заголовок
+  admin-страницы, плейсхолдеры/подсказки настроек. `module_id` и технические ключи
+  (`block_key`, CSS/JS) не менялись.
+
 ## [1.0.1] - 2026-06-15
 
 Приведение к канону `fivecorners.admintemplate` + закрытие находок ревью.
