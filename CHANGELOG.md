@@ -5,6 +5,12 @@
 
 ## [1.0.2] - 2026-06-15
 
+### Fixed
+- `UnInstallEvents()` вызывал несуществующий `EventManager::unRegisterEventHandlerCompatible()`
+  → fatal при удалении/переустановке модуля (у `registerEventHandlerCompatible` нет парного
+  `unRegister…Compatible`; снятие хендлера — всегда `unRegisterEventHandler()`). Поймано на
+  деплое-переустановке. Заменено на `unRegisterEventHandler()` (×3).
+
 ### Changed
 - Отображаемое имя модуля «Сворачивание **блоков** в CRM» → «Сворачивание **разделов** в CRM»
   (RU и EN — `Block Collapse` → `Section Collapse`): MODULE_NAME, пункт меню, заголовок

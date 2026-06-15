@@ -264,19 +264,19 @@ class fivecorners_crmblockcollapse extends CModule
     {
         $em = EventManager::getInstance();
 
-        $em->unRegisterEventHandlerCompatible(
+        $em->unRegisterEventHandler(
             "main", "OnBuildGlobalMenu",
             $this->MODULE_ID,
             "\\FiveCorners\\CrmBlockCollapse\\AdminMenu",
             "onBuildGlobalMenu"
         );
-        $em->unRegisterEventHandlerCompatible(
+        $em->unRegisterEventHandler(
             "main", "OnProlog",
             $this->MODULE_ID,
             "\\FiveCorners\\CrmBlockCollapse\\Handler\\PageHandler",
             "onProlog"
         );
-        $em->unRegisterEventHandlerCompatible(
+        $em->unRegisterEventHandler(
             "main", "OnProlog",
             $this->MODULE_ID,
             "\\FiveCorners\\CrmBlockCollapse\\AdminMenu",
