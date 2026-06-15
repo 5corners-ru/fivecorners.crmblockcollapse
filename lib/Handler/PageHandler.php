@@ -2,6 +2,7 @@
 namespace FiveCorners\CrmBlockCollapse\Handler;
 
 use Bitrix\Main\Loader;
+use Bitrix\Main\ModuleManager;
 use FiveCorners\CrmBlockCollapse\Settings;
 
 class PageHandler
@@ -85,8 +86,12 @@ class PageHandler
         $APPLICATION->AddHeadString(
             '<script id="fc-cbc-config">window.FC_CBC_CONFIG = ' . $configJson . ';</script>'
         );
+        // ?v=<версия> — cache-busting: collapse.js грузится статикой, без версии браузер
+        // держал бы старую копию после апдейта модуля и новая логика не доехала бы до юзера.
+        $ver = (string)ModuleManager::getVersion(Settings::getModuleId());
         $APPLICATION->AddHeadString(
-            '<script src="/local/js/fivecorners.crmblockcollapse/collapse.js" defer></script>'
+            '<script src="/local/js/fivecorners.crmblockcollapse/collapse.js?v='
+            . rawurlencode($ver) . '" defer></script>'
         );
     }
 
