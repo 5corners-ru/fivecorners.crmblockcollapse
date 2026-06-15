@@ -1,3 +1,26 @@
-﻿.DS_Store
+# OS
+.DS_Store
 Thumbs.db
+
+# Editors / IDE
+.idea/
+.vscode/
+*.swp
+*~
+
+# Backups / temp
 *.bak
+*_old
+*_backup
+*.log
+
+# Локальные рабочие файлы сессий (не в репо)
+NEXT_SESSION.md
+
+# Палыч-паспорт проекта — локальный (не коммитим)
+.project.json
+
+# Сборки для клиента / Marketplace
+_Market/
+*.tar.gz
+*.zip

@@ -16,9 +16,13 @@ class StageHelper
 
         try {
             switch ($entityType) {
+                // CHECK_PERMISSIONS=Y (не 'N'!) — иначе любой авторизованный юзер
+                // перебором entity_id вытащит стадию чужой/недоступной сделки (IDOR).
+                // Нет доступа → GetListEx вернёт пусто → null → раскрытие по стадии
+                // просто не применится (безопасная деградация).
                 case 'DEAL':
                     $res = \CCrmDeal::GetListEx(
-                        [], ['=ID' => $entityId, 'CHECK_PERMISSIONS' => 'N'],
+                        [], ['=ID' => $entityId, 'CHECK_PERMISSIONS' => 'Y'],
                         false, false, ['STAGE_ID']
                     );
                     $row = $res ? $res->Fetch() : null;
@@ -26,7 +30,7 @@ class StageHelper
 
                 case 'LEAD':
                     $res = \CCrmLead::GetListEx(
-                        [], ['=ID' => $entityId, 'CHECK_PERMISSIONS' => 'N'],
+                        [], ['=ID' => $entityId, 'CHECK_PERMISSIONS' => 'Y'],
                         false, false, ['STATUS_ID']
                     );
                     $row = $res ? $res->Fetch() : null;
@@ -36,6 +40,13 @@ class StageHelper
                     if ($smartTypeId <= 0) return null;
                     $factory = \Bitrix\Crm\Service\Container::getInstance()->getFactory($smartTypeId);
                     if (!$factory) return null;
+                    // Проверка прав на чтение конкретного элемента смарт-процесса —
+                    // getItem() сам по себе ACL не проверяет. Fail closed: при ином
+                    // сигнатуре API на старых версиях try/catch ниже вернёт null.
+                    $userPerms = \Bitrix\Crm\Service\Container::getInstance()->getUserPermissions();
+                    if (!$userPerms->checkReadPermissions($factory->getEntityTypeId(), $entityId)) {
+                        return null;
+                    }
                     $item = $factory->getItem($entityId);
                     if (!$item) return null;
                     return $item->getStageId() ?: null;
