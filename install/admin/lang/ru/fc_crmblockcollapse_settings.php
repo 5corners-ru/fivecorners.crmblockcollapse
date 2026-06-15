@@ -1,5 +1,5 @@
 <?php
-$MESS["FCO_CBC_SET_PAGE_TITLE"]        = "Сворачивание разделов в CRM — Настройки";
+$MESS["FCO_CBC_SET_PAGE_TITLE"]        = "Сворачивание разделов CRM — Настройки";
 $MESS["FCO_CBC_SET_SECTION_ENTITIES"]  = "Типы сущностей";
 $MESS["FCO_CBC_SET_ENTITY_DEAL"]       = "Сделки";
 $MESS["FCO_CBC_SET_ENTITY_LEAD"]       = "Лиды";

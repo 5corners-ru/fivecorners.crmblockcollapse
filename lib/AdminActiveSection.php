@@ -66,7 +66,7 @@ class AdminActiveSection
     }
 
     /**
-     * Shortcut для admin-страниц модуля: раздел "5 УГЛОВ" + зонтик «Сворачивание разделов в CRM».
+     * Shortcut для admin-страниц модуля: раздел "5 УГЛОВ" + зонтик «Сворачивание разделов CRM».
      */
     public static function markCrmBlockCollapse(): void
     {
@@ -74,7 +74,7 @@ class AdminActiveSection
             sectionMenuId:   'fivecorners',
             sectionText:     '5 УГЛОВ',
             umbrellaItemsId: 'menu_fco_cbc',
-            umbrellaText:    'Сворачивание разделов в CRM',
+            umbrellaText:    'Сворачивание разделов CRM',
             umbrellaUrl:     '/local/admin/fc_crmblockcollapse_settings.php'
         );
     }
