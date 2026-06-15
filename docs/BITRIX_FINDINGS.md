@@ -83,6 +83,8 @@ $conn->queryExecute("DELETE FROM b_user_option WHERE CATEGORY = " . $helper->con
 
 ## F3. `TypeTable::getList()` без `IS_INITIALIZED=Y` отдаёт полу-созданные смарт-типы  → promote (bitrix-d7-orm-rules)
 
+> ✅ Промотировано в KB → `docs/bitrix/findings/d7_orm_findings.md` `[crmblockcollapse #3]` (PR #66, merged 2026-06-15).
+
 **Как проявляется.** Перечисление/валидация типов смарт-процессов через
 `\Bitrix\Crm\Model\Dynamic\TypeTable::getList(['select' => ['ENTITY_TYPE_ID']])` без фильтра
 включает в выборку типы, которые ядро ещё **не дорегистрировало** (DDL физической таблицы не
