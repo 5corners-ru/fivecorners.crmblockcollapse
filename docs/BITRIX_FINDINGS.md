@@ -112,3 +112,41 @@ $res = \Bitrix\Crm\Model\Dynamic\TypeTable::getList([
 
 Альтернатива для точечной проверки одного типа — готовый `TypeTable::getByEntityTypeId($id)` (фильтр
 `IS_INITIALIZED` уже внутри). Поймано на ORM-ревью v1.0.7 (закрытие TD-1).
+
+---
+
+## F4. Статик-asset через `AddHeadString` без `?v=<версия>` → браузер исполняет старую кэш-копию после апдейта  → promote (bitrix-onpremise-ui-rules)
+
+> ✅ Промотировано в KB → `docs/bitrix/findings/onpremise_ui_findings.md` `[crmblockcollapse #4]` (2026-06-15).
+
+**Как проявляется.** Выкатка v1.0.8 (новая логика «свернуть всё при первом визите» в `collapse.js`).
+`mode=reinstall` отработал, `InstallFiles` скопировал свежий `collapse.js` в `/local/js/<mod>/`,
+`ModuleManager::getVersion` = 1.0.8 — но фича в браузере **не работала**. CDP-смоук на staging:
+`fetch(url,{cache:'no-store'})` отдавал новый файл (24 KB, с новыми функциями), а обычный
+`fetch(url)` (как грузит браузер по `<script src>`) — старую кэш-копию (19 KB, без новой логики).
+Инлайн-конфиг `window.FC_CBC_CONFIG = {...}` (через тот же `AddHeadString`) при этом был свежий —
+он в HTML, не отдельный кэшируемый файл.
+
+**Корень.** Статик в `/local/js|css/` отдаётся веб-сервером с агрессивными cache-заголовками (у
+Bitrix `.js`/`.css` большой `Expires`/`max-age`). Ключ браузерного кэша — URL; при апдейте модуля
+**путь файла не меняется** (особенно для out-of-tree файлов из `InstallFiles` — фиксированная
+локация), условный запрос даже не уходит. Штатные `Asset::addJs()`/`addExternalJs()`/`Extension::load()`
+сами версионируют URL, а ручной `AddHeadString` с сырым `<script src>` — нет.
+
+**❌ Anti-pattern**
+```php
+$APPLICATION->AddHeadString('<script src="/local/js/mymod/app.js" defer></script>');
+// URL без версии → стабильный ключ кэша → новый deploy не доезжает до браузера
+```
+
+**✅ Pattern**
+```php
+$ver = (string)\Bitrix\Main\ModuleManager::getVersion($moduleId);
+$APPLICATION->AddHeadString(
+    '<script src="/local/js/'.$moduleId.'/app.js?v='.rawurlencode($ver).'" defer></script>'
+);
+// bump версии → новый URL → гарантированный перезапрос. Cache-busting привязан к релизу.
+```
+
+Фикс v1.0.8: `lib/Handler/PageHandler.php` — `?v=ModuleManager::getVersion()` на `collapse.js`.
+Альтернатива — подключать через `Asset::getInstance()->addJs()` (ядро версионирует само).
