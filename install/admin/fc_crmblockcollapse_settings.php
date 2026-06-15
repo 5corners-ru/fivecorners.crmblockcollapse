@@ -54,12 +54,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && check_bitrix_sessid()) {
     }
     Settings::setEnabledSmartProcessTypeIds(array_values($smartIds));
 
+    Settings::setCollapseAllFirstVisit(!empty($_POST['collapse_all_first_visit']));
+
     $saved   = true;
     $message = Loc::getMessage('FCO_CBC_SET_SAVED');
 }
 
-$enabledEntityTypes  = Settings::getEnabledEntityTypes();
-$enabledSmartTypeIds = Settings::getEnabledSmartProcessTypeIds();
+$enabledEntityTypes   = Settings::getEnabledEntityTypes();
+$enabledSmartTypeIds  = Settings::getEnabledSmartProcessTypeIds();
+$collapseAllFirstVisit = Settings::isCollapseAllFirstVisit();
 
 // Список доступных смарт-процессов для чекбоксов
 $smartProcesses = array();
@@ -184,6 +187,24 @@ PageHeader::renderOpen($moduleVersion, 'fivecorners.crmblockcollapse', 'settings
                         </table>
                     </div>
                 <?php endif; ?>
+            </div>
+        </div>
+
+        <!-- Поведение -->
+        <div class="adm-detail-content-item-block">
+            <div class="adm-detail-content-item-title"><?= Loc::getMessage('FCO_CBC_SET_SECTION_BEHAVIOR') ?></div>
+            <div class="adm-detail-content-item-content">
+                <table class="edit-table" width="100%">
+                    <tr>
+                        <td class="adm-detail-valign-top" width="40%">
+                            <label for="fc_cbc_collapse_first"><b><?= Loc::getMessage('FCO_CBC_SET_COLLAPSE_FIRST') ?></b></label>
+                        </td>
+                        <td>
+                            <input type="checkbox" id="fc_cbc_collapse_first" name="collapse_all_first_visit" value="Y"<?= $collapseAllFirstVisit ? ' checked' : '' ?>>
+                        </td>
+                    </tr>
+                </table>
+                <p style="font-size:12px;color:#888;margin-top:6px;"><?= htmlspecialcharsbx(Loc::getMessage('FCO_CBC_SET_COLLAPSE_FIRST_HINT')) ?></p>
             </div>
         </div>
 

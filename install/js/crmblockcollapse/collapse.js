@@ -10,9 +10,10 @@
     'use strict';
 
     var CONFIG = window.FC_CBC_CONFIG || {
-        enabledTypes:   ['DEAL', 'LEAD', 'CONTACT', 'COMPANY', 'SMART_PROCESS'],
-        enabledSmTypes: [],
-        ajaxUrl:        '/local/ajax/fivecorners_crmblockcollapse.php'
+        enabledTypes:          ['DEAL', 'LEAD', 'CONTACT', 'COMPANY', 'SMART_PROCESS'],
+        enabledSmTypes:        [],
+        ajaxUrl:               '/local/ajax/fivecorners_crmblockcollapse.php',
+        collapseAllFirstVisit: true
     };
 
     var SECTION_SEL  = '.ui-entity-editor-section';
@@ -30,6 +31,13 @@
     var stageWatcher      = null;
     var saveTimer         = null;
     var stageReloadTimer  = null;
+
+    // «Свернуть всё при первом визите»: активно, пока у пользователя нет куки-маркера
+    // для данного типа сущности. Сворачивает все ещё не настроенные блоки и персистит
+    // их как свёрнутые на сервер (один bulk-запрос), чтобы поведение было устойчивым.
+    var firstTimeCollapse = false;
+    var firstTimeQueue    = {};
+    var firstTimeSaveTimer = null;
 
     // ── Entity detection ──────────────────────────────────────────────────────
     function parseEntityInfo() {
@@ -114,6 +122,57 @@
             xhr.open('POST', CONFIG.ajaxUrl, true);
             xhr.send(fd);
         }, 450);
+    }
+
+    // ── First-visit cookie marker ─────────────────────────────────────────────
+    function getCookie(name) {
+        var re = new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()\[\]\\\/\+^])/g, '\\$1') + '=([^;]*)');
+        var m  = document.cookie.match(re);
+        return m ? decodeURIComponent(m[1]) : null;
+    }
+
+    function setCookie(name, value) {
+        // 5 лет, путь /, SameSite=Lax — это просто UI-маркер, не секрет.
+        // Secure добавляем на HTTPS-порталах (best practice, без него Chrome ругается).
+        var secure = (window.location.protocol === 'https:') ? '; Secure' : '';
+        document.cookie = name + '=' + encodeURIComponent(value)
+            + '; path=/; max-age=' + (60 * 60 * 24 * 365 * 5) + '; SameSite=Lax' + secure;
+    }
+
+    function initCookieName(info) {
+        return 'fc_cbc_init_' + info.type + (info.typeId ? '_' + info.typeId : '');
+    }
+
+    // Возвращает true, если это первый визит для данного типа сущности (куки ещё нет),
+    // и сразу ставит куку — так интро отрабатывает строго один раз.
+    function computeFirstTime(info) {
+        if (!CONFIG.collapseAllFirstVisit) return false;
+        var name = initCookieName(info);
+        if (getCookie(name)) return false;
+        setCookie(name, '1');
+        return true;
+    }
+
+    // Дебаунс-флаш накопленных ключей одним bulk-запросом (merge на сервере).
+    function flushFirstTime(info) {
+        clearTimeout(firstTimeSaveTimer);
+        firstTimeSaveTimer = setTimeout(function () {
+            var keys = Object.keys(firstTimeQueue);
+            if (!keys.length || !info) return;
+            var blocks = {};
+            for (var i = 0; i < keys.length; i++) blocks[keys[i]] = true;
+            firstTimeQueue = {};
+            var sessid = (typeof BX !== 'undefined' && BX.bitrix_sessid) ? BX.bitrix_sessid() : '';
+            var fd = new FormData();
+            fd.append('action',      'save_bulk');
+            fd.append('entity_type', info.type);
+            if (info.typeId) fd.append('smart_type_id', String(info.typeId));
+            fd.append('blocks', JSON.stringify(blocks));
+            fd.append('sessid', sessid);
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', CONFIG.ajaxUrl, true);
+            xhr.send(fd);
+        }, 500);
     }
 
     // ── Collapse / expand ─────────────────────────────────────────────────────
@@ -201,9 +260,25 @@
         var btn = createBtn();
         header.appendChild(btn);
 
-        // Stage rule wins over user's saved state
+        // Приоритеты: правило по стадии > сохранённый выбор юзера > дефолт.
+        // Дефолт для нетронутого блока: на первом визите — свёрнут (и персистим),
+        // иначе — развёрнут (историческое поведение).
         var forcedExpanded = expandedByStage.indexOf(key) !== -1;
-        var collapsed = forcedExpanded ? false : (blockState[key] === true);
+        var collapsed;
+        if (forcedExpanded) {
+            collapsed = false;
+        } else if (blockState[key] === true) {
+            collapsed = true;
+        } else if (blockState[key] === false) {
+            collapsed = false;
+        } else if (firstTimeCollapse) {
+            collapsed = true;
+            blockState[key]    = true;   // локально считаем настроенным
+            firstTimeQueue[key] = true;  // и персистим bulk-запросом
+            flushFirstTime(entityInfo);
+        } else {
+            collapsed = false;
+        }
         applyState(section, body, wrap, collapsed, false);
 
         // Click on header toggles
@@ -408,9 +483,10 @@
         expandedByStage = [];
         sectionMap      = {};
         loadState(entityInfo, function (state, ebs) {
-            blockState      = state;
-            expandedByStage = ebs;
-            stateLoaded     = true;
+            blockState        = state;
+            expandedByStage   = ebs;
+            firstTimeCollapse = computeFirstTime(entityInfo);
+            stateLoaded       = true;
             processSections();
         });
     }
@@ -420,9 +496,10 @@
         entityInfo = parseEntityInfo();
         if (entityInfo && isEntityEnabled(entityInfo)) {
             loadState(entityInfo, function (state, ebs) {
-                blockState      = state;
-                expandedByStage = ebs;
-                stateLoaded     = true;
+                blockState        = state;
+                expandedByStage   = ebs;
+                firstTimeCollapse = computeFirstTime(entityInfo);
+                stateLoaded       = true;
                 processSections();
             });
         }

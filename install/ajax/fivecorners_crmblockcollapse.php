@@ -113,5 +113,45 @@ if ($action === 'save' && check_bitrix_sessid()) {
     die();
 }
 
+if ($action === 'save_bulk' && check_bitrix_sessid()) {
+    // Инициализация «свернуть всё при первом визите»: клиент шлёт карту блоков,
+    // которых ещё нет в его состоянии. Мержим, НЕ затирая уже сохранённые явные
+    // выборы пользователя (на случай гонки/второго устройства).
+    $blocksRaw = json_decode((string)($_POST['blocks'] ?? ''), true);
+    if (!is_array($blocksRaw) || empty($blocksRaw)) {
+        echo json_encode(array('success' => false, 'error' => 'empty_blocks'));
+        die();
+    }
+
+    $stateJson = CUserOptions::GetOption(OPTION_CATEGORY, $optionName, '{}');
+    $state     = json_decode($stateJson, true);
+    if (!is_array($state)) {
+        $state = array();
+    }
+
+    foreach ($blocksRaw as $key => $val) {
+        $key = trim((string)$key);
+        // Допускаем только формат ключей, который генерирует collapse.js getBlockKey():
+        // title:<до 80 символов> либо idx:<число>. Отсекает мусор и prototype-pollution
+        // (__proto__/constructor), которым клиент мог бы засорить b_user_option.
+        if (!preg_match('/^(title:.{1,80}|idx:\d{1,4})$/u', $key)) {
+            continue;
+        }
+        if (array_key_exists($key, $state)) {
+            continue; // уже есть явный выбор пользователя — не трогаем
+        }
+        $state[$key] = true; // bulk-инициализация первого визита — всегда «свёрнут»
+    }
+
+    if (count($state) > 100) {
+        $state = array_slice($state, -100, 100, true);
+    }
+
+    CUserOptions::SetOption(OPTION_CATEGORY, $optionName, json_encode($state));
+
+    echo json_encode(array('success' => true));
+    die();
+}
+
 echo json_encode(array('success' => false, 'error' => 'invalid_action'));
 die();
