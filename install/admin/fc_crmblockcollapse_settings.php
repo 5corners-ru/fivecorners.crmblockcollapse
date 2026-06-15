@@ -131,8 +131,33 @@ PageHeader::renderOpen($moduleVersion, 'fivecorners.crmblockcollapse');
 .fc-cbc-stage-table td:first-child { width:42%; font-size:13px; }
 .fc-cbc-stage-table textarea { width:100%; font-size:12px; box-sizing:border-box; padding:4px 6px; border:1px solid #c5d1df; border-radius:3px; resize:vertical; min-height:38px; }
 .fc-cbc-stage-table textarea:focus { border-color:#2d7cc7; outline:none; }
-.fc-cbc-stage-id { font-size:10px; color:#bbb; font-family:monospace; }
+.fc-cbc-stage-id { font-size:10px; color:#bbb; font-family:monospace; display:block; margin-top:2px; }
 .fc-cbc-stage-hint { font-size:12px; color:#888; margin-bottom:10px; }
+
+/* Мастер-деталь: воронки слева, стадии справа */
+.fc-cbc-md-toolbar { display:flex; gap:10px; align-items:center; margin-bottom:12px; flex-wrap:wrap; }
+.fc-cbc-md-search { flex:1; min-width:160px; padding:6px 10px; border:1px solid #c5d1df; border-radius:5px; font-size:13px; box-sizing:border-box; }
+.fc-cbc-md-search:focus { border-color:#2d7cc7; outline:none; }
+.fc-cbc-md-toolbar label { font-size:12px; color:#5a6b7b; display:inline-flex; align-items:center; gap:5px; cursor:pointer; user-select:none; }
+.fc-cbc-md-body { display:flex; gap:14px; border:1px solid #e6ecf0; border-radius:8px; overflow:hidden; }
+.fc-cbc-md-list { width:240px; flex-shrink:0; background:#f7f9fb; border-right:1px solid #e6ecf0; max-height:460px; overflow-y:auto; }
+.fc-cbc-md-fn { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:9px 12px; cursor:pointer; font-size:13px; border-bottom:1px solid #eef2f5; }
+.fc-cbc-md-fn:hover { background:#eef4fa; }
+.fc-cbc-md-fn.active { background:#2d7cc7; color:#fff; }
+.fc-cbc-md-fn.active .fc-cbc-badge { background:rgba(255,255,255,.25)!important; color:#fff!important; }
+.fc-cbc-md-detail { flex:1; padding:4px 14px 14px; max-height:460px; overflow-y:auto; }
+.fc-cbc-md-detail h4 { margin:10px 0 8px; font-size:14px; color:#2b3640; }
+.fc-cbc-md-pane { display:none; }
+.fc-cbc-md-pane.active { display:block; }
+.fc-cbc-md-single { border:1px solid #e6ecf0; border-radius:8px; padding:6px 14px 14px; }
+.fc-cbc-badge { display:inline-block; min-width:34px; text-align:center; font-size:11px; font-weight:700; border-radius:10px; padding:1px 7px; flex-shrink:0; }
+.fc-cbc-badge.has { background:#e3f3ea; color:#1e9e54; }
+.fc-cbc-badge.none { background:#eef1f4; color:#aab4be; }
+.fc-cbc-strow { display:grid; grid-template-columns:210px 1fr; gap:10px; align-items:start; padding:7px 0; border-bottom:1px solid #f1f4f7; }
+.fc-cbc-strow .stname { font-size:13px; }
+.fc-cbc-rule { width:100%; font-size:12px; box-sizing:border-box; padding:4px 6px; border:1px solid #c5d1df; border-radius:3px; resize:vertical; min-height:38px; font-family:inherit; }
+.fc-cbc-rule:focus { border-color:#2d7cc7; outline:none; }
+.fc-cbc-rule.filled { border-color:#9cc5a8; background:#f6fbf7; }
 </style>
 
 <?php if ($saved): ?>
@@ -247,9 +272,85 @@ PageHeader::renderOpen($moduleVersion, 'fivecorners.crmblockcollapse');
                 </p>
 
                 <?php
-                $hasDeal  = !empty($allStages['DEAL']);
-                $hasLead  = !empty($allStages['LEAD']);
-                $hasSmart = !empty($allStages['SMART_PROCESS']);
+                // Привести все сущности к единой структуре «воронки → стадии»:
+                //   DEAL  — сгруппировать плоский список по 'group' (имя воронки);
+                //   LEAD  — одна воронка; SMART — каждый тип смарт-процесса = воронка.
+                $funnelsByEntity = array('DEAL' => array(), 'LEAD' => array(), 'SMART_PROCESS' => array());
+                $dealMap = array();
+                foreach ($allStages['DEAL'] as $st) {
+                    $g = (string)($st['group'] ?? '');
+                    if (!isset($dealMap[$g])) {
+                        $dealMap[$g] = count($funnelsByEntity['DEAL']);
+                        $funnelsByEntity['DEAL'][] = array('name' => $g, 'stages' => array());
+                    }
+                    $funnelsByEntity['DEAL'][$dealMap[$g]]['stages'][] = $st;
+                }
+                if (!empty($allStages['LEAD'])) {
+                    $funnelsByEntity['LEAD'][] = array('name' => '', 'stages' => $allStages['LEAD']);
+                }
+                foreach ($allStages['SMART_PROCESS'] as $g) {
+                    $funnelsByEntity['SMART_PROCESS'][] = array('name' => $g['typeTitle'], 'stages' => $g['stages']);
+                }
+
+                $hasDeal  = !empty($funnelsByEntity['DEAL']);
+                $hasLead  = !empty($funnelsByEntity['LEAD']);
+                $hasSmart = !empty($funnelsByEntity['SMART_PROCESS']);
+
+                // Мастер-деталь: список воронок слева (с бейджами/поиском) + стадии выбранной справа.
+                // Все textarea рендерятся сразу (скрыты CSS) — форма отправляет все правила разом.
+                $renderMD = function($entity, $funnels) use ($currentStageRules) {
+                    $rules = $currentStageRules[$entity] ?? array();
+                    $ph    = Loc::getMessage('FCO_CBC_SET_STAGE_PLACEHOLDER');
+
+                    $renderStages = function($funnel) use ($entity, $rules, $ph) {
+                        $out = '';
+                        foreach ($funnel['stages'] as $st) {
+                            $sid    = $st['id'];
+                            $val    = implode("\n", $rules[$sid] ?? array());
+                            $filled = trim($val) !== '' ? ' filled' : '';
+                            $out .= '<div class="fc-cbc-strow"><div class="stname">'
+                                  . htmlspecialcharsbx($st['name'])
+                                  . '<span class="fc-cbc-stage-id">' . htmlspecialcharsbx($sid) . '</span></div>'
+                                  . '<div><textarea class="fc-cbc-rule' . $filled . '" rows="2" name="stage_rules['
+                                  . $entity . '][' . htmlspecialcharsbx($sid) . ']" placeholder="'
+                                  . htmlspecialcharsbx($ph) . '">' . htmlspecialcharsbx($val) . '</textarea></div></div>';
+                        }
+                        return $out;
+                    };
+
+                    // Одна воронка (Лиды) — без левого списка, просто стадии.
+                    if (count($funnels) === 1) {
+                        return '<div class="fc-cbc-md-single">' . $renderStages($funnels[0]) . '</div>';
+                    }
+
+                    $html = '<div class="fc-cbc-md"><div class="fc-cbc-md-toolbar">'
+                          . '<input type="text" class="fc-cbc-md-search" placeholder="'
+                          . htmlspecialcharsbx(Loc::getMessage('FCO_CBC_SET_STAGE_SEARCH')) . '">'
+                          . '<label><input type="checkbox" class="fc-cbc-md-onlycfg"> '
+                          . htmlspecialcharsbx(Loc::getMessage('FCO_CBC_SET_STAGE_ONLYCFG')) . '</label>'
+                          . '</div><div class="fc-cbc-md-body"><div class="fc-cbc-md-list">';
+                    $panes = '';
+                    foreach ($funnels as $i => $funnel) {
+                        $total  = count($funnel['stages']);
+                        $cnt    = 0;
+                        $search = mb_strtolower($funnel['name'], 'UTF-8');
+                        foreach ($funnel['stages'] as $st) {
+                            if (trim(implode('', $rules[$st['id']] ?? array())) !== '') $cnt++;
+                            $search .= ' ' . mb_strtolower($st['name'], 'UTF-8');
+                        }
+                        $paneId = 'md-' . $entity . '-' . $i;
+                        $active = $i === 0 ? ' active' : '';
+                        $badge  = $cnt > 0 ? 'has' : 'none';
+                        $html  .= '<div class="fc-cbc-md-fn' . $active . '" data-target="' . $paneId
+                                . '" data-rules="' . $cnt . '" data-search="' . htmlspecialcharsbx($search) . '">'
+                                . '<span>' . htmlspecialcharsbx($funnel['name']) . '</span>'
+                                . '<span class="fc-cbc-badge ' . $badge . '">' . $cnt . '/' . $total . '</span></div>';
+                        $panes .= '<div class="fc-cbc-md-pane' . $active . '" id="' . $paneId . '"><h4>'
+                                . htmlspecialcharsbx($funnel['name']) . '</h4>' . $renderStages($funnel) . '</div>';
+                    }
+                    return $html . '</div><div class="fc-cbc-md-detail">' . $panes . '</div></div></div>';
+                };
+
                 if (!$hasDeal && !$hasLead && !$hasSmart):
                 ?>
                     <p style="color:#888;"><?= htmlspecialcharsbx(Loc::getMessage('FCO_CBC_SET_STAGE_NONE')) ?></p>
@@ -262,86 +363,15 @@ PageHeader::renderOpen($moduleVersion, 'fivecorners.crmblockcollapse');
                 </div>
 
                 <?php if ($hasDeal): ?>
-                <div class="fc-cbc-stage-pane active" id="pane-deal">
-                    <table class="fc-cbc-stage-table" width="100%">
-                        <?php
-                        $lastGroup = null;
-                        foreach ($allStages['DEAL'] as $stage):
-                            if (($stage['group'] ?? '') !== $lastGroup):
-                                $lastGroup = $stage['group'] ?? '';
-                        ?>
-                        <tr><td colspan="2"><div class="fc-cbc-stage-group"><?= htmlspecialcharsbx($lastGroup) ?></div></td></tr>
-                        <?php endif;
-                            $stageId  = $stage['id'];
-                            $curValue = implode("\n", $currentStageRules['DEAL'][$stageId] ?? array());
-                        ?>
-                        <tr>
-                            <td>
-                                <?= htmlspecialcharsbx($stage['name']) ?>
-                                <br><span class="fc-cbc-stage-id"><?= htmlspecialcharsbx($stageId) ?></span>
-                            </td>
-                            <td>
-                                <textarea name="stage_rules[DEAL][<?= htmlspecialcharsbx($stageId) ?>]"
-                                          rows="2"
-                                          placeholder="<?= Loc::getMessage('FCO_CBC_SET_STAGE_PLACEHOLDER') ?>"><?= htmlspecialcharsbx($curValue) ?></textarea>
-                            </td>
-                        </tr>
-                        <?php endforeach; ?>
-                    </table>
-                </div>
+                <div class="fc-cbc-stage-pane active" id="pane-deal"><?= $renderMD('DEAL', $funnelsByEntity['DEAL']) ?></div>
                 <?php endif; ?>
 
                 <?php if ($hasLead): ?>
-                <div class="fc-cbc-stage-pane<?= !$hasDeal ? ' active' : '' ?>" id="pane-lead">
-                    <table class="fc-cbc-stage-table" width="100%">
-                        <?php foreach ($allStages['LEAD'] as $stage):
-                            $stageId  = $stage['id'];
-                            $curValue = implode("\n", $currentStageRules['LEAD'][$stageId] ?? array());
-                        ?>
-                        <tr>
-                            <td>
-                                <?= htmlspecialcharsbx($stage['name']) ?>
-                                <br><span class="fc-cbc-stage-id"><?= htmlspecialcharsbx($stageId) ?></span>
-                            </td>
-                            <td>
-                                <textarea name="stage_rules[LEAD][<?= htmlspecialcharsbx($stageId) ?>]"
-                                          rows="2"
-                                          placeholder="<?= Loc::getMessage('FCO_CBC_SET_STAGE_PLACEHOLDER') ?>"><?= htmlspecialcharsbx($curValue) ?></textarea>
-                            </td>
-                        </tr>
-                        <?php endforeach; ?>
-                    </table>
-                </div>
+                <div class="fc-cbc-stage-pane<?= !$hasDeal ? ' active' : '' ?>" id="pane-lead"><?= $renderMD('LEAD', $funnelsByEntity['LEAD']) ?></div>
                 <?php endif; ?>
 
                 <?php if ($hasSmart): ?>
-                <div class="fc-cbc-stage-pane<?= !$hasDeal && !$hasLead ? ' active' : '' ?>" id="pane-smart">
-                    <?php foreach ($allStages['SMART_PROCESS'] as $spGroup): ?>
-                    <div style="margin-bottom:20px;">
-                        <div class="fc-cbc-stage-group" style="font-size:12px;font-weight:bold;color:#525c69;">
-                            <?= htmlspecialcharsbx($spGroup['typeTitle']) ?>
-                        </div>
-                        <table class="fc-cbc-stage-table" width="100%">
-                            <?php foreach ($spGroup['stages'] as $stage):
-                                $stageId  = $stage['id'];
-                                $curValue = implode("\n", $currentStageRules['SMART_PROCESS'][$stageId] ?? array());
-                            ?>
-                            <tr>
-                                <td>
-                                    <?= htmlspecialcharsbx($stage['name']) ?>
-                                    <br><span class="fc-cbc-stage-id"><?= htmlspecialcharsbx($stageId) ?></span>
-                                </td>
-                                <td>
-                                    <textarea name="stage_rules[SMART_PROCESS][<?= htmlspecialcharsbx($stageId) ?>]"
-                                              rows="2"
-                                              placeholder="<?= Loc::getMessage('FCO_CBC_SET_STAGE_PLACEHOLDER') ?>"><?= htmlspecialcharsbx($curValue) ?></textarea>
-                                </td>
-                            </tr>
-                            <?php endforeach; ?>
-                        </table>
-                    </div>
-                    <?php endforeach; ?>
-                </div>
+                <div class="fc-cbc-stage-pane<?= !$hasDeal && !$hasLead ? ' active' : '' ?>" id="pane-smart"><?= $renderMD('SMART_PROCESS', $funnelsByEntity['SMART_PROCESS']) ?></div>
                 <?php endif; ?>
 
                 <?php endif; ?>
@@ -367,7 +397,7 @@ BX.ready(function() {
         });
     }
 
-    // Stage rules tabs
+    // Stage rules tabs (Сделки / Лиды / Смарт)
     document.querySelectorAll('.fc-cbc-stage-tab').forEach(function(tab) {
         tab.addEventListener('click', function() {
             document.querySelectorAll('.fc-cbc-stage-tab').forEach(function(t) { t.classList.remove('active'); });
@@ -375,6 +405,56 @@ BX.ready(function() {
             tab.classList.add('active');
             var pane = document.getElementById(tab.dataset.pane);
             if (pane) pane.classList.add('active');
+        });
+    });
+
+    // Мастер-деталь: переключение воронок + поиск + «только с правилами»
+    document.querySelectorAll('.fc-cbc-md').forEach(function(md) {
+        var fns     = Array.prototype.slice.call(md.querySelectorAll('.fc-cbc-md-fn'));
+        var search  = md.querySelector('.fc-cbc-md-search');
+        var onlycfg = md.querySelector('.fc-cbc-md-onlycfg');
+
+        function activate(fn) {
+            fns.forEach(function(f) { f.classList.remove('active'); });
+            md.querySelectorAll('.fc-cbc-md-pane').forEach(function(p) { p.classList.remove('active'); });
+            fn.classList.add('active');
+            var pane = document.getElementById(fn.dataset.target);
+            if (pane) pane.classList.add('active');
+        }
+        fns.forEach(function(fn) { fn.addEventListener('click', function() { activate(fn); }); });
+
+        function applyFilter() {
+            var q    = (search && search.value ? search.value : '').toLowerCase().trim();
+            var only = onlycfg && onlycfg.checked;
+            var firstVisible = null, activeVisible = false;
+            fns.forEach(function(fn) {
+                var show = true;
+                if (only && fn.dataset.rules === '0') show = false;
+                if (show && q && (fn.dataset.search || '').indexOf(q) === -1) show = false;
+                fn.style.display = show ? '' : 'none';
+                if (show) { if (!firstVisible) firstVisible = fn; if (fn.classList.contains('active')) activeVisible = true; }
+            });
+            if (!activeVisible && firstVisible) activate(firstVisible);
+        }
+        if (search)  search.addEventListener('input', applyFilter);
+        if (onlycfg) onlycfg.addEventListener('change', applyFilter);
+    });
+
+    // Подсветка заполненных полей + живой пересчёт бейджа воронки
+    document.querySelectorAll('.fc-cbc-rule').forEach(function(t) {
+        t.addEventListener('input', function() {
+            t.classList.toggle('filled', !!t.value.trim());
+            var pane = t.closest('.fc-cbc-md-pane');
+            var mdEl = t.closest('.fc-cbc-md');
+            if (!pane || !mdEl) return;
+            var all    = pane.querySelectorAll('.fc-cbc-rule');
+            var filled = Array.prototype.filter.call(all, function(x) { return x.value.trim(); }).length;
+            var btn = mdEl.querySelector('.fc-cbc-md-fn[data-target="' + pane.id + '"]');
+            if (btn) {
+                btn.dataset.rules = String(filled);
+                var b = btn.querySelector('.fc-cbc-badge');
+                if (b) { b.textContent = filled + '/' + all.length; b.className = 'fc-cbc-badge ' + (filled > 0 ? 'has' : 'none'); }
+            }
         });
     });
 

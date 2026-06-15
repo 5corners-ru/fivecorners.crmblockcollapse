@@ -21,3 +21,5 @@ $MESS["FCO_CBC_SET_STAGE_RULES_HINT3"] = "Названия разделов — 
 $MESS["FCO_CBC_SET_STAGE_NONE"]        = "Стадии не найдены. Убедитесь что модуль CRM установлен и активен.";
 $MESS["FCO_CBC_VERSION_LABEL"]         = "версия";
 $MESS["FCO_CBC_SET_STAGE_PLACEHOLDER"] = "Название раздела…";
+$MESS["FCO_CBC_SET_STAGE_SEARCH"]      = "Поиск воронки или стадии…";
+$MESS["FCO_CBC_SET_STAGE_ONLYCFG"]     = "только с правилами";

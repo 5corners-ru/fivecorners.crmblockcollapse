@@ -21,3 +21,5 @@ $MESS["FCO_CBC_SET_STAGE_RULES_HINT3"] = "Section names — as shown in the card
 $MESS["FCO_CBC_SET_STAGE_NONE"]        = "No stages found. Make sure the CRM module is installed and active.";
 $MESS["FCO_CBC_VERSION_LABEL"]         = "version";
 $MESS["FCO_CBC_SET_STAGE_PLACEHOLDER"] = "Section name…";
+$MESS["FCO_CBC_SET_STAGE_SEARCH"]      = "Search funnel or stage…";
+$MESS["FCO_CBC_SET_STAGE_ONLYCFG"]     = "only with rules";
