@@ -49,11 +49,35 @@ $blocks = array(
 );
 ?>
 <style>
-.fc-cbc-help { max-width:880px; font-size:14px; color:#2b3640; line-height:1.55; }
-.fc-cbc-help h3 { font-size:15px; margin:22px 0 8px; color:#1f2a33; }
-.fc-cbc-help h3:first-child { margin-top:4px; }
+.fc-cbc-help {
+    max-width:900px;
+    background:#fff;
+    border:1px solid #e2e8ee;
+    border-radius:12px;
+    box-shadow:0 1px 3px rgba(0,0,0,.05), 0 10px 30px rgba(0,0,0,.05);
+    padding:30px 36px 32px;
+    font-size:14px;
+    color:#2b3640;
+    line-height:1.62;
+}
+.fc-cbc-help .lead {
+    background:#f0f7ff;
+    border:1px solid #c0d9f0;
+    border-radius:8px;
+    padding:14px 18px;
+    color:#2d4f6e;
+    margin:0 0 6px;
+}
+.fc-cbc-help h3 {
+    font-size:15px;
+    margin:26px 0 9px;
+    padding-left:12px;
+    color:#1f2a33;
+    border-left:3px solid #2d7cc7;
+    line-height:1.3;
+}
 .fc-cbc-help p { margin:0 0 10px; }
-.fc-cbc-help .lead { background:#f0f7ff; border:1px solid #c0d9f0; border-radius:6px; padding:12px 16px; color:#2d4f6e; }
+.fc-cbc-help p:last-child { margin-bottom:0; }
 </style>
 
 <div class="fc-cbc-help">
