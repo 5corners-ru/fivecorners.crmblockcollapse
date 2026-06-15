@@ -78,3 +78,35 @@ $conn->queryExecute("DELETE FROM b_user_option WHERE CATEGORY = " . $helper->con
 `forSql()` (abstract), `convertToDbString()` = `"'".forSql()."'"`. Само ядро для
 `b_user_option` исторически использует `$DB->ForSql()` в `CUserOptions` — D7-эквивалент
 именно `forSql`/`convertToDbString`, НЕ `quote`.
+
+---
+
+## F3. `TypeTable::getList()` без `IS_INITIALIZED=Y` отдаёт полу-созданные смарт-типы  → promote (bitrix-d7-orm-rules)
+
+**Как проявляется.** Перечисление/валидация типов смарт-процессов через
+`\Bitrix\Crm\Model\Dynamic\TypeTable::getList(['select' => ['ENTITY_TYPE_ID']])` без фильтра
+включает в выборку типы, которые ядро ещё **не дорегистрировало** (DDL физической таблицы не
+завершён или завис с `IS_INITIALIZED='N'`). В TD-1 это подрывало смысл самой валидации: «призрачный»
+тип проходил как валидный → save плодил ключ `state_SMART_PROCESS_<id>` для несуществующего типа.
+
+**Корень.** Ядро при создании смарт-процесса сначала пишет строку в `b_crm_dynamic_type` с
+`IS_INITIALIZED='N'`, и лишь после успешного создания физической таблицы ставит `'Y'`. Сам
+`TypeTable::getByEntityTypeId()` в ядре фильтрует `'=IS_INITIALIZED' => true` (см. `crm/lib/model/dynamic/typetable.php`).
+Ручной `getList` без этого фильтра видит и неинициализированные.
+
+**❌ Anti-pattern**
+```php
+$res = \Bitrix\Crm\Model\Dynamic\TypeTable::getList(['select' => ['ENTITY_TYPE_ID']]);
+// в выборке — в т.ч. IS_INITIALIZED='N' типы (DDL не завершён)
+```
+
+**✅ Pattern**
+```php
+$res = \Bitrix\Crm\Model\Dynamic\TypeTable::getList([
+    'select' => ['ENTITY_TYPE_ID'],
+    'filter' => ['=IS_INITIALIZED' => true],   // BooleanField 'N'/'Y' → true маппится в 'Y'
+]);
+```
+
+Альтернатива для точечной проверки одного типа — готовый `TypeTable::getByEntityTypeId($id)` (фильтр
+`IS_INITIALIZED` уже внутри). Поймано на ORM-ревью v1.0.7 (закрытие TD-1).
