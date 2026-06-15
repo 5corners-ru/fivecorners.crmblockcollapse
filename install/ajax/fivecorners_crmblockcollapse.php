@@ -12,6 +12,14 @@ header('Content-Type: application/json; charset=utf-8');
 
 /** @var CUser $USER */
 if (!$USER->IsAuthorized()) {
+    // TD-4 (SEC-11): фиксируем анонимное обращение к эндпоинту в журнал безопасности.
+    \CEventLog::Add(array(
+        'SEVERITY'      => 'SECURITY',
+        'AUDIT_TYPE_ID' => 'FCO_CBC_UNAUTHORIZED_AJAX',
+        'MODULE_ID'     => 'fivecorners.crmblockcollapse',
+        'ITEM_ID'       => mb_substr(preg_replace('/[^a-zA-Z0-9_]/', '', (string)($_REQUEST['action'] ?? '')), 0, 50),
+        'DESCRIPTION'   => 'Unauthorized AJAX request to crmblockcollapse endpoint',
+    ));
     echo json_encode(array('success' => false, 'error' => 'not_authorized'));
     die();
 }
@@ -31,6 +39,13 @@ $smartTypeId = (int)($_REQUEST['smart_type_id'] ?? 0);
 
 if (!in_array($entityType, ALLOWED_ENTITY_TYPES, true)) {
     echo json_encode(array('success' => false, 'error' => 'invalid_entity_type'));
+    die();
+}
+
+// TD-1: для смарт-процессов smart_type_id обязан быть реальным типом, иначе save
+// плодит мусорные ключи state_SMART_PROCESS_<id> в b_user_option.
+if ($entityType === 'SMART_PROCESS' && !StageHelper::isValidSmartTypeId($smartTypeId)) {
+    echo json_encode(array('success' => false, 'error' => 'invalid_smart_type'));
     die();
 }
 

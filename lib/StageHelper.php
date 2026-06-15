@@ -40,6 +40,10 @@ class StageHelper
                     if ($smartTypeId <= 0) return null;
                     $factory = \Bitrix\Crm\Service\Container::getInstance()->getFactory($smartTypeId);
                     if (!$factory) return null;
+                    // TD-2: явный guard вместо опоры на try/catch — тип без воронки
+                    // не имеет поля STAGE_ID, getStageId() вернул бы мусор. Канон —
+                    // проверять isStagesEnabled() перед обращением к стадии.
+                    if (!$factory->isStagesEnabled()) return null;
                     // Проверка прав на чтение конкретного элемента смарт-процесса —
                     // getItem() сам по себе ACL не проверяет. Fail closed: при ином
                     // сигнатуре API на старых версиях try/catch ниже вернёт null.
@@ -55,6 +59,40 @@ class StageHelper
         }
 
         return null;
+    }
+
+    /**
+     * TD-1: smart_type_id с фронта — произвольный int. Валидируем против реального
+     * множества типов смарт-процессов (b_crm_dynamic_type), чтобы save не плодил
+     * мусорные ключи state_SMART_PROCESS_<id> в b_user_option. Кэш на запрос.
+     */
+    public static function isValidSmartTypeId(int $smartTypeId): bool
+    {
+        if ($smartTypeId <= 0) {
+            return false;
+        }
+        if (!Loader::includeModule('crm')) {
+            return false;
+        }
+
+        static $validIds = null;
+        if ($validIds === null) {
+            $validIds = [];
+            try {
+                // IS_INITIALIZED=Y — иначе полу-созданный смарт-тип (DDL ещё не дошёл)
+                // прошёл бы валидацию как «реальный», что подрывает смысл TD-1.
+                $res = \Bitrix\Crm\Model\Dynamic\TypeTable::getList([
+                    'select' => ['ENTITY_TYPE_ID'],
+                    'filter' => ['=IS_INITIALIZED' => true],
+                ]);
+                while ($row = $res->fetch()) {
+                    $validIds[(int)$row['ENTITY_TYPE_ID']] = true;
+                }
+            } catch (\Throwable $e) {
+            }
+        }
+
+        return isset($validIds[$smartTypeId]);
     }
 
     public static function getAllStages(): array
@@ -98,6 +136,7 @@ class StageHelper
         try {
             $typeList = \Bitrix\Crm\Model\Dynamic\TypeTable::getList([
                 'select' => ['ID', 'ENTITY_TYPE_ID', 'TITLE'],
+                'filter' => ['=IS_INITIALIZED' => true],
                 'order'  => ['TITLE' => 'ASC'],
             ]);
             while ($typeRow = $typeList->fetch()) {

@@ -3,6 +3,21 @@
 Все заметные изменения модуля. Формат — [Keep a Changelog](https://keepachangelog.com/ru/1.0.0/),
 версионирование — [SemVer](https://semver.org/lang/ru/).
 
+## [1.0.7] - 2026-06-15
+
+### Security
+- **TD-4 (SEC-11):** анонимное обращение к ajax-эндпоинту (`!$USER->IsAuthorized()`)
+  пишется в журнал безопасности через `CEventLog::Add()` (severity SECURITY,
+  audit-type `FCO_CBC_UNAUTHORIZED_AJAX`).
+- **TD-1:** `action=save/load` для смарт-процессов валидирует `smart_type_id` против
+  реального множества типов (`StageHelper::isValidSmartTypeId()` — кэш `TypeTable`).
+  Раньше любой int плодил мусорные ключи `state_SMART_PROCESS_<id>` в `b_user_option`.
+
+### Changed
+- **TD-2:** `StageHelper::getEntityStageId()` для смарт-процессов — явный guard
+  `$factory->isStagesEnabled()` перед `getStageId()` (раньше защищено только
+  `try/catch`; канон требует явной проверки).
+
 ## [1.0.6] - 2026-06-15
 
 ### Changed
