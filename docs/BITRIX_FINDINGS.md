@@ -10,6 +10,8 @@
 
 ## F1. `EventManager::unRegisterEventHandlerCompatible()` не существует → `unRegisterEventHandler()`  → promote (bitrix-module-rules)
 
+> ✅ Промотировано в KB → `docs/bitrix/findings/module_install_findings.md` `[crmblockcollapse #1]` (PR #63, merged 2026-06-15).
+
 **Как проявляется.** `UnInstallEvents()` модуля при удалении/переустановке падает фаталом:
 `Call to undefined method Bitrix\Main\EventManager::unRegisterEventHandlerCompatible()`.
 Поймано на деплое-переустановке (reinstall оборвался на шаге UnInstallEvents — файлы
@@ -45,6 +47,8 @@ $em->unRegisterEventHandler("main","OnProlog",$id,$class,"onProlog"); // сни�
 ---
 
 ## F2. `SqlHelper::quote()` — для ИДЕНТИФИКАТОРОВ, не строковых значений → `convertToDbString()`  → promote (bitrix-d7-orm-rules)
+
+> ✅ Промотировано в KB → `docs/bitrix/findings/d7_orm_findings.md` `[crmblockcollapse #2]` (PR #63, merged 2026-06-15).
 
 **Как проявляется.** `DELETE FROM b_user_option WHERE CATEGORY = ` + `$helper->quote($MODULE_ID)`
 на MySQL генерит невалидный SQL: `MODULE_ID = 'fivecorners.crmblockcollapse'` превращается в
