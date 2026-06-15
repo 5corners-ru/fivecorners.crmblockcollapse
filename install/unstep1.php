@@ -13,7 +13,7 @@ Loc::loadMessages(__DIR__ . "/index.php");
 
     <table border="0" cellspacing="0" cellpadding="0" width="100%">
         <tr>
-            <td align="center" width="100%" style="text-align:center;">
+            <td width="100%" style="text-align:center;">
                 <div class="adm-info-message-wrap adm-info-message-red">
                     <div class="adm-info-message">
                         <div class="adm-info-message-title" style="text-align:center;">

@@ -36,8 +36,10 @@ if (!in_array($entityType, ALLOWED_ENTITY_TYPES, true)) {
 
 $optionName = 'state_' . $entityType . ($smartTypeId > 0 ? '_' . $smartTypeId : '');
 
-if ($action === 'load') {
-    // read-only: returns current user's data only; no sessid check required
+if ($action === 'load' && check_bitrix_sessid()) {
+    // CSRF-защита и на чтение: load зовёт CRM по entity_id, поэтому без sessid
+    // сторонняя страница могла бы дёргать эндпоинт в браузере жертвы.
+    // Доступ к самим CRM-данным дополнительно режется CHECK_PERMISSIONS=Y в StageHelper.
     $stateJson = CUserOptions::GetOption(OPTION_CATEGORY, $optionName, '{}');
     $state     = json_decode($stateJson, true);
 

@@ -1,6 +1,8 @@
 <?php
 $MESS["FCO_CBC_MODULE_NAME"]         = "5 CORNERS. CRM Block Collapse";
 $MESS["FCO_CBC_MODULE_DESC"]         = "Allows collapsing and expanding field groups in CRM entity cards. User state is stored in the database and synchronized across devices.";
+$MESS["FCO_CBC_PARTNER_NAME"]        = "5 CORNERS";
+$MESS["FCO_CBC_PARTNER_URI"]         = "https://www.5corners.ru";
 $MESS["FCO_CBC_INSTALL_TITLE"]       = "Module Installation";
 $MESS["FCO_CBC_INSTALL_DONE"]        = "Module has been successfully installed.";
 $MESS["FCO_CBC_INSTALL_GO"]          = "Go to settings";

@@ -72,7 +72,13 @@ class PageHandler
             'enabledSmTypes' => array_map('strval', $enabledSmTypes),
             'ajaxUrl'        => '/local/ajax/fivecorners_crmblockcollapse.php',
         );
-        $configJson = json_encode($config, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        // JSON_HEX_TAG/AMP/APOS/QUOT — экранируют < > & ' " как \uXXXX, чтобы значение
+        // не могло выйти из inline <script> через </script>. JSON_UNESCAPED_SLASHES
+        // НЕ ставим — он оставляет "/" сырым и открывает ровно эту дыру (XSS-context).
+        $configJson = json_encode(
+            $config,
+            JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
+        );
 
         $APPLICATION->AddHeadString('<style id="fc-cbc-css">' . self::getCSS() . '</style>');
         $APPLICATION->AddHeadString(

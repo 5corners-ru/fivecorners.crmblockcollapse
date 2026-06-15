@@ -75,11 +75,18 @@
 
     // ── AJAX ──────────────────────────────────────────────────────────────────
     function loadState(info, callback) {
-        var qs = 'action=load&entity_type=' + encodeURIComponent(info.type);
-        if (info.id)     qs += '&entity_id='    + encodeURIComponent(info.id);
-        if (info.typeId) qs += '&smart_type_id=' + encodeURIComponent(info.typeId);
+        // POST (не GET): sessid не попадает в access-логи/Referer. Эндпоинт читает параметры
+        // из $_REQUEST, так что POST-тело подходит. stageWatcher игнорит наш ajaxUrl, поэтому
+        // собственный load не примут за CRM-сохранение.
+        var sessid = (typeof BX !== 'undefined' && BX.bitrix_sessid) ? BX.bitrix_sessid() : '';
+        var fd = new FormData();
+        fd.append('action',      'load');
+        fd.append('entity_type', info.type);
+        fd.append('sessid',      sessid);
+        if (info.id)     fd.append('entity_id',     String(info.id));
+        if (info.typeId) fd.append('smart_type_id', String(info.typeId));
         var xhr = new XMLHttpRequest();
-        xhr.open('GET', CONFIG.ajaxUrl + '?' + qs, true);
+        xhr.open('POST', CONFIG.ajaxUrl, true);
         xhr.onload = function () {
             try {
                 var r = JSON.parse(xhr.responseText);
@@ -88,7 +95,7 @@
             catch (e) { callback({}, []); }
         };
         xhr.onerror = function () { callback({}, []); };
-        xhr.send();
+        xhr.send(fd);
     }
 
     function scheduleSave(info, key, collapsed) {

@@ -14,7 +14,11 @@ Loc::loadMessages(__FILE__);
 
 /** @var CUser $USER */
 if (!$USER->IsAdmin()) {
+    // AuthForm не останавливает выполнение сам — обязателен die(), иначе авторизованный
+    // не-админ дойдёт до рендера настроек.
     $APPLICATION->AuthForm('');
+    require_once $_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/epilog_admin.php';
+    die();
 }
 
 if (!Loader::includeModule('fivecorners.crmblockcollapse')) {
@@ -22,6 +26,7 @@ if (!Loader::includeModule('fivecorners.crmblockcollapse')) {
     die();
 }
 
+use FiveCorners\CrmBlockCollapse\AdminActiveSection;
 use FiveCorners\CrmBlockCollapse\PageHeader;
 use FiveCorners\CrmBlockCollapse\Settings;
 use FiveCorners\CrmBlockCollapse\StageHelper;
@@ -101,6 +106,10 @@ if (Loader::includeModule('crm')) {
 }
 
 $moduleVersion = ModuleManager::getVersion('fivecorners.crmblockcollapse');
+
+// Канон: зафиксировать active section до prolog_admin_after, иначе меню «прыгает»
+// с «Рабочего стола» на наш раздел при загрузке (файл в /local/admin/).
+AdminActiveSection::markCrmBlockCollapse();
 
 $APPLICATION->AddHeadString('<base href="/bitrix/admin/">');
 $APPLICATION->SetTitle(Loc::getMessage('FCO_CBC_SET_PAGE_TITLE'));
@@ -369,15 +378,14 @@ BX.ready(function() {
         });
     });
 
-    // Activate admin menu section
-    var el = document.getElementById('global_menu_fivecorners');
-    if (el && !el.classList.contains('adm-main-menu-item-active')) {
+    // Подсветка раздела меню — на сервере через AdminActiveSection::markCrmBlockCollapse()
+    // (до prolog_admin_after). Ниже — лишь belt-and-suspenders JS-fallback на случай, если
+    // на каком-то билде $adminMenu не успел инициализироваться: раскрыть раздел, если ядро
+    // его не подсветило само.
+    var sec = document.getElementById('global_menu_fivecorners');
+    if (sec && !sec.classList.contains('adm-main-menu-item-active')
+        && window.BX && BX.adminMenu && BX.adminMenu.GlobalMenuClick) {
         BX.adminMenu.GlobalMenuClick('fivecorners');
-    }
-    var link = document.querySelector('a.adm-submenu-item-name-link[href="/local/admin/fc_crmblockcollapse_settings.php"]');
-    if (link) {
-        var block = link.closest('.adm-sub-submenu-block');
-        if (block) { block.classList.add('adm-submenu-item-active'); }
     }
 });
 </script>

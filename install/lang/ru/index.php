@@ -1,6 +1,8 @@
 <?php
 $MESS["FCO_CBC_MODULE_NAME"]         = "5 УГЛОВ. Сворачивание блоков в CRM";
 $MESS["FCO_CBC_MODULE_DESC"]         = "Добавляет возможность сворачивать и разворачивать группы полей в карточках CRM-сущностей. Состояние сохраняется для каждого пользователя в базе данных.";
+$MESS["FCO_CBC_PARTNER_NAME"]        = "5 УГЛОВ";
+$MESS["FCO_CBC_PARTNER_URI"]         = "https://www.5corners.ru";
 $MESS["FCO_CBC_INSTALL_TITLE"]       = "Установка модуля";
 $MESS["FCO_CBC_INSTALL_DONE"]        = "Модуль успешно установлен.";
 $MESS["FCO_CBC_INSTALL_GO"]          = "Перейти в настройки";

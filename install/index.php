@@ -28,13 +28,13 @@ class fivecorners_crmblockcollapse extends CModule
         $this->MODULE_VERSION_DATE = $arModuleVersion["VERSION_DATE"];
         $this->MODULE_NAME         = Loc::getMessage("FCO_CBC_MODULE_NAME");
         $this->MODULE_DESCRIPTION  = Loc::getMessage("FCO_CBC_MODULE_DESC");
-        $this->PARTNER_NAME        = "5 УГЛОВ";
-        $this->PARTNER_URI         = "https://www.5corners.ru";
+        $this->PARTNER_NAME        = Loc::getMessage("FCO_CBC_PARTNER_NAME") ?: "5 УГЛОВ";
+        $this->PARTNER_URI         = Loc::getMessage("FCO_CBC_PARTNER_URI") ?: "https://www.5corners.ru";
     }
 
     public function DoInstall()
     {
-        global $APPLICATION, $DB;
+        global $APPLICATION;
         try {
             $this->InstallDB();
             $this->InstallFiles();
@@ -54,7 +54,7 @@ class fivecorners_crmblockcollapse extends CModule
 
     public function DoUninstall()
     {
-        global $APPLICATION, $DB;
+        global $APPLICATION;
         $step = (int)($_REQUEST["step"] ?? 1);
 
         if ($step < 2) {
@@ -71,8 +71,10 @@ class fivecorners_crmblockcollapse extends CModule
         $this->UnInstallFiles();
 
         if (!$saveData) {
-            $this->UnInstallDB(); // deletes user data + calls UnRegisterModule
+            // Канон: удалить настройки модуля, пока он ещё зарегистрирован,
+            // и только потом UnInstallDB (там UnRegisterModule идёт последним).
             \Bitrix\Main\Config\Option::delete($this->MODULE_ID);
+            $this->UnInstallDB(); // deletes user data + calls UnRegisterModule
         } else {
             if (ModuleManager::isModuleInstalled($this->MODULE_ID)) {
                 UnRegisterModule($this->MODULE_ID);
@@ -94,10 +96,14 @@ class fivecorners_crmblockcollapse extends CModule
 
     public function UnInstallDB()
     {
-        global $DB;
-        $DB->Query(
-            "DELETE FROM b_user_option WHERE CATEGORY = '"
-            . $DB->ForSql($this->MODULE_ID) . "'"
+        // D7 Connection API (не legacy $DB->Query) — диалект-нейтрально, PG-safe.
+        // Чистим все per-user опции модуля (state_DEAL/state_LEAD/state_SMART_PROCESS_N).
+        // convertToDbString() = '…forSql(escaped)…' — экранирование строкового ЗНАЧЕНИЯ.
+        // (quote() здесь нельзя — он для ИДЕНТИФИКАТОРОВ, разбил бы MODULE_ID по точке.)
+        $conn   = \Bitrix\Main\Application::getConnection();
+        $helper = $conn->getSqlHelper();
+        $conn->queryExecute(
+            "DELETE FROM b_user_option WHERE CATEGORY = " . $helper->convertToDbString($this->MODULE_ID)
         );
         if (ModuleManager::isModuleInstalled($this->MODULE_ID)) {
             UnRegisterModule($this->MODULE_ID);
@@ -107,6 +113,18 @@ class fivecorners_crmblockcollapse extends CModule
 
     public function InstallFiles()
     {
+        // Что и куда копирует InstallFiles (канон — табличка для будущего разработчика):
+        //
+        //  Источник (install/)                  → Назначение (/local/)                                  Назначение файла
+        //  ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+        //  admin/*                              → /local/admin/                                          admin-страница + lang
+        //  js/crmblockcollapse/*                → /local/js/fivecorners.crmblockcollapse/                публичный collapse.js
+        //  ajax/fivecorners_crmblockcollapse.php→ /local/ajax/                                           AJAX load/save
+        //  admin_module_icon.png                → /local/images/fivecorners.crmblockcollapse/            бренд модуля в admin-меню
+        //  images/section_icon.svg              → /local/images/fivecorners/logo.svg (shared, guard)     иконка раздела «5 УГЛОВ»*
+        //
+        //  * section-иконка раздела рисуется data-URI'ем из AdminMenu::SECTION_ICON_SVG_B64;
+        //    файл копируется лишь для backward-compat других модулей семьи (см. AdminMenu).
         $docRoot = \Bitrix\Main\Application::getDocumentRoot();
 
         // Admin pages → /local/admin/
@@ -134,10 +152,12 @@ class fivecorners_crmblockcollapse extends CModule
         if (!is_dir($moduleImgDir)) {
             @mkdir($moduleImgDir, 0755, true);
         }
-        $adminIconSrc = __DIR__ . "/admin_icon.png";
+        $adminIconSrc = __DIR__ . "/admin_module_icon.png";
         if (is_file($adminIconSrc)) {
-            @copy($adminIconSrc, $moduleImgDir . "/admin_icon.png");
+            @copy($adminIconSrc, $moduleImgDir . "/admin_module_icon.png");
         }
+        // Legacy cleanup: старое имя admin_icon.png (до канона Phase 7.2)
+        @unlink($moduleImgDir . "/admin_icon.png");
 
         // Section icon (with file_exists guard — don't overwrite if already deployed)
         $sectionImgDir = $docRoot . "/local/images/fivecorners";
