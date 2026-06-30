@@ -96,15 +96,22 @@ class fivecorners_crmblockcollapse extends CModule
 
     public function UnInstallDB()
     {
-        // D7 Connection API (не legacy $DB->Query) — диалект-нейтрально, PG-safe.
-        // Чистим все per-user опции модуля (state_DEAL/state_LEAD/state_SMART_PROCESS_N).
-        // convertToDbString() = '…forSql(escaped)…' — экранирование строкового ЗНАЧЕНИЯ.
-        // (quote() здесь нельзя — он для ИДЕНТИФИКАТОРОВ, разбил бы MODULE_ID по точке.)
-        $conn   = \Bitrix\Main\Application::getConnection();
-        $helper = $conn->getSqlHelper();
-        $conn->queryExecute(
-            "DELETE FROM b_user_option WHERE CATEGORY = " . $helper->convertToDbString($this->MODULE_ID)
-        );
+        // Headless-реинсталлеры (mcp4dev opsReinstallModule mode=full) зовут UnInstallDB()
+        // напрямую, минуя DoUninstall с его save_data-гардом, и выставляют
+        // $_REQUEST['savedata'|'save_data']='Y' (инцидент сноса боевой базы qadesk
+        // 30.06.2026). Гардим DELETE per-user опций, UnRegisterModule оставляем безусловным.
+        $saveData = (($_REQUEST['savedata'] ?? $_REQUEST['save_data'] ?? '') === 'Y');
+        if (!$saveData) {
+            // D7 Connection API (не legacy $DB->Query) — диалект-нейтрально, PG-safe.
+            // Чистим все per-user опции модуля (state_DEAL/state_LEAD/state_SMART_PROCESS_N).
+            // convertToDbString() = '…forSql(escaped)…' — экранирование строкового ЗНАЧЕНИЯ.
+            // (quote() здесь нельзя — он для ИДЕНТИФИКАТОРОВ, разбил бы MODULE_ID по точке.)
+            $conn   = \Bitrix\Main\Application::getConnection();
+            $helper = $conn->getSqlHelper();
+            $conn->queryExecute(
+                "DELETE FROM b_user_option WHERE CATEGORY = " . $helper->convertToDbString($this->MODULE_ID)
+            );
+        }
         if (ModuleManager::isModuleInstalled($this->MODULE_ID)) {
             UnRegisterModule($this->MODULE_ID);
         }

@@ -3,6 +3,11 @@
 Все заметные изменения модуля. Формат — [Keep a Changelog](https://keepachangelog.com/ru/1.0.0/),
 версионирование — [SemVer](https://semver.org/lang/ru/).
 
+## [1.0.9] - 2026-06-30
+
+### Fixed
+- **`UnInstallDB()` уважает `$_REQUEST['savedata'|'save_data']`.** Метод безусловно чистил per-user опции модуля (`b_user_option` — состояние свёрнутости разделов карточки) и при headless-реинсталле (`mcp4dev opsReinstallModule mode=full`, зовёт `UnInstallDB()` напрямую с флагом в `$_REQUEST`) затирал пользовательские настройки вопреки флагу «сохранить данные». Теперь `DELETE` выполняется только при снятой галке, `UnRegisterModule` остаётся безусловным. Тот же системный класс уязвимости, что снёс боевую базу qadesk 30.06.2026. Правка: `install/index.php`.
+
 ## [1.0.8] - 2026-06-15
 
 ### Added
